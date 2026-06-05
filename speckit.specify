@@ -1,0 +1,105 @@
+# Spec Kit Specification
+## Scribble Lab — Feature Specification
+
+---
+
+## Scenario 1 — Room Setup & Lobby
+
+### Context
+
+A player opens the app and wants to either host or join a drawing game. The system must create isolated rooms, track who is the host, validate all inputs, keep the lobby participant list fresh via polling, and enforce that only the host can start the game once enough players are present.
+
+---
+
+### Acceptance Criteria
+
+#### AC-1: Room Creation — Host Assignment
+- **Given** a player submits the Create Room form with a non-empty player name,  
+  **When** the backend processes `POST /rooms`,  
+  **Then** the response includes `participantId` and a `room.hostId` equal to that `participantId`.
+- The creator is **always** the host. There is no election or transfer mechanism.
+
+#### AC-2: Room Creation — Empty Name Rejection
+- **Given** a player submits the Create Room form with a blank or whitespace-only player name,  
+  **When** the form is submitted,  
+  **Then** an inline error message is displayed and **no** HTTP request is sent to the backend.
+
+#### AC-3: Join Room — Valid Code
+- **Given** a player enters a valid 4-character room code and a non-empty player name,  
+  **When** `POST /rooms/:code/join` is called,  
+  **Then** the player is added to the room and the response includes the updated participant list.
+
+#### AC-4: Join Room — Empty Name Rejection
+- **Given** a player submits the Join Room form with a blank or whitespace-only player name,  
+  **When** the form is submitted,  
+  **Then** an inline error is shown and **no** HTTP request is sent.
+
+#### AC-5: Join Room — Invalid Code Format Rejection
+- **Given** a player submits the Join Room form with a code that is empty, fewer than 4 characters, or contains invalid characters,  
+  **When** the form is submitted,  
+  **Then** an inline error is shown and **no** HTTP request is sent.
+
+#### AC-6: Join Room — Unknown Code Rejection
+- **Given** a player submits a correctly-formatted code that does not correspond to an existing room,  
+  **When** `POST /rooms/:code/join` returns 404,  
+  **Then** the UI displays the server error message (e.g., "Unable to join room") and the player remains on the Join Room page.
+
+#### AC-7: Room Isolation
+- **Given** two rooms exist simultaneously (Room A and Room B),  
+  **When** a player joins Room B,  
+  **Then** Room A's participant list is unchanged and the two rooms share no state.
+
+#### AC-8: Lobby Polling
+- **Given** a player has joined or created a room and is on the Lobby screen,  
+  **When** another player joins the same room,  
+  **Then** the participant list on the first player's Lobby screen updates **automatically within approximately 2 seconds** without any manual action.
+- The polling interval is approximately 2000 ms.
+- Polling starts when the Lobby mounts and stops when it unmounts.
+- A polling failure (network error) is surfaced as a non-blocking status message; it does not unmount the Lobby.
+
+#### AC-9: Host-Only Start Game
+- **Given** a player is on the Lobby screen and is **not** the host,  
+  **When** the Lobby renders,  
+  **Then** the "Start Game" button is **not visible** to that player.
+
+#### AC-10: 2-Player Minimum
+- **Given** the host is on the Lobby screen and fewer than 2 players are present,  
+  **When** the Lobby renders,  
+  **Then** the "Start Game" button is **disabled** (or absent) and a hint explains the minimum is 2 players.
+
+#### AC-11: Start Game Enabled
+- **Given** the host is on the Lobby screen and 2 or more players are present,  
+  **When** the Lobby renders,  
+  **Then** the "Start Game" button is **enabled** and the host can click it to proceed to the game screen.
+
+---
+
+### Edge Cases
+
+| Edge Case | Expected Behavior |
+|-----------|-------------------|
+| Player name is only whitespace (e.g., `"   "`) | Treated as empty; inline error shown, no request sent |
+| Room code typed in lowercase | Normalized to uppercase before submission |
+| Room code is 3 or 5 characters | Inline error: must be exactly 4 characters |
+| Room code contains special characters | Inline error: alphanumeric only |
+| Lobby polling fires while a previous request is still in-flight | Second request is skipped (debounced or guarded) |
+| Non-host reloads the lobby page | Remains a non-host; "Start Game" is still absent |
+| Host opens two tabs | Both tabs reflect host; implementation does not need to handle tab coordination |
+
+---
+
+### Out-of-Scope for This Scenario
+
+- Game logic, drawing, guessing, scoring
+- Host transfer
+- Kicking players
+- Room passwords or invite links
+- Any database or authentication
+
+---
+
+## Iteration Log
+
+| Version | Date | Change |
+|---------|------|--------|
+| 1.0 | 2026-06-05 | Initial spec for Scenario 1 |

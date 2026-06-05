@@ -1,33 +1,60 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "../components/Card";
 import { PageHeader } from "../components/PageHeader";
 import { RoomCodeBadge } from "../components/RoomCodeBadge";
 import { useRoomState, useRoomStore } from "../state/roomStore";
 
+const POLL_INTERVAL_MS = 2000;
+const MIN_PLAYERS_TO_START = 2;
+
 export function LobbyPage() {
   const navigate = useNavigate();
   const roomStore = useRoomStore();
-  const { room, error, isLoading } = useRoomState();
-  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const { room, participantId, isLoading } = useRoomState();
+  const [pollError, setPollError] = useState<string | null>(null);
+  const isFetchingRef = useRef(false);
 
+  // Redirect to home if no room session exists
   useEffect(() => {
     if (!room) {
       navigate("/", { replace: true });
     }
   }, [navigate, room]);
 
-  async function handleRefresh() {
-    try {
-      setRefreshError(null);
-      await roomStore.fetchRoom();
-    } catch (caughtError) {
-      setRefreshError(caughtError instanceof Error ? caughtError.message : "Unable to refresh room");
+  // Start polling on mount; clean up on unmount
+  useEffect(() => {
+    if (!room) return;
+
+    async function poll() {
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
+
+      try {
+        await roomStore.fetchRoom();
+        setPollError(null);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Poll failed";
+        setPollError(message);
+      } finally {
+        isFetchingRef.current = false;
+      }
     }
-  }
+
+    const intervalId = setInterval(poll, POLL_INTERVAL_MS);
+    return () => clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!room) {
     return null;
+  }
+
+  const isHost = room.hostId === participantId;
+  const canStart = isHost && room.participants.length >= MIN_PLAYERS_TO_START;
+
+  function handleStartGame() {
+    navigate("/game");
   }
 
   return (
@@ -49,8 +76,13 @@ export function LobbyPage() {
             <ul className="player-list">
               {room.participants.map((participant) => (
                 <li key={participant.id}>
-                  <span>{participant.name}</span>
-                  <span className="player-list__meta">joined</span>
+                  <span>
+                    {participant.name}
+                    {participant.id === room.hostId ? " 👑" : ""}
+                  </span>
+                  <span className="player-list__meta">
+                    {participant.id === participantId ? "you" : "joined"}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -58,21 +90,51 @@ export function LobbyPage() {
         </Card>
 
         <Card title="Status">
-          <p className="status-line" style={{ backgroundColor: isLoading ? '#fef3c7' : '#e0e7ff', color: isLoading ? '#b45309' : '#3730a3' }}>
+          <p
+            className="status-line"
+            style={{
+              backgroundColor: isLoading ? "#fef3c7" : "#e0e7ff",
+              color: isLoading ? "#b45309" : "#3730a3"
+            }}
+          >
             {isLoading ? "Refreshing players..." : "Ready to play"}
           </p>
-          <p style={{ marginTop: '8px' }}>{error ?? refreshError ?? "Waiting for the host to start the game."}</p>
+          {pollError ? (
+            <p id="lobby-poll-error" style={{ marginTop: "8px", color: "#b91c1c" }}>
+              {pollError}
+            </p>
+          ) : null}
+          <p style={{ marginTop: "8px" }}>
+            {isHost
+              ? room.participants.length < MIN_PLAYERS_TO_START
+                ? `Waiting for at least ${MIN_PLAYERS_TO_START} players to join before starting.`
+                : "You can start the game now."
+              : "Waiting for the host to start the game."}
+          </p>
         </Card>
       </div>
 
-      <div className="button-row button-row--spread">
-        <button className="button button--secondary" disabled={isLoading} onClick={handleRefresh}>
-          {isLoading ? "Refreshing..." : "Refresh Room"}
-        </button>
-        <button className="button button--primary" onClick={() => navigate("/game")}>
-          Start Game
-        </button>
-      </div>
+      {isHost ? (
+        <div className="button-row button-row--spread">
+          <button
+            id="lobby-start-game"
+            className="button button--primary"
+            onClick={handleStartGame}
+            disabled={!canStart}
+            title={
+              !canStart
+                ? `Need at least ${MIN_PLAYERS_TO_START} players to start`
+                : "Start the game"
+            }
+          >
+            Start Game
+          </button>
+        </div>
+      ) : (
+        <p id="lobby-waiting-message" style={{ textAlign: "center", color: "#6b7280", marginTop: "16px" }}>
+          Waiting for the host to start the game…
+        </p>
+      )}
     </section>
   );
 }

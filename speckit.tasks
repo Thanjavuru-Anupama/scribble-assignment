@@ -1,0 +1,87 @@
+# Spec Kit Tasks
+## Scribble Lab — Ordered Task Checklist
+
+---
+
+## Scenario 1 — Room Setup & Lobby
+
+### Phase 0: Discovery & Artifacts
+- [x] T0.1 Read all starter files (models, services, API, pages, routes, styles)
+- [x] T0.2 Document ≥3 gaps and ≥2 assumptions in `speckit.plan`
+- [x] T0.3 Write `speckit.constitution`
+- [x] T0.4 Write `speckit.specify` (Scenario 1 AC-1 through AC-11)
+- [x] T0.5 Write `speckit.plan` (state model, data flow, implementation sequence)
+- [x] T0.6 Write `speckit.tasks` (this file)
+
+### Phase 1: Backend — Model & Service
+- [x] T1.1 Add `hostId: string` to `Room` interface in `backend/src/models/game.ts`
+- [x] T1.2 Add `hostId: string` to `RoomSnapshot` interface in `backend/src/models/game.ts`
+- [x] T1.3 Set `room.hostId = participant.id` in `createRoom()` in `backend/src/services/roomStore.ts`
+- [x] T1.4 Include `hostId` in `toRoomSnapshot()` return value in `backend/src/services/roomStore.ts`
+- [x] T1.5 Add test: `createRoom` sets `hostId` equal to first participant's ID (in `roomStore.test.ts`)
+
+### Phase 2: Backend — Validation
+- [x] T2.1 Change `playerName` in `createRoomSchema` from `z.string().optional()` to `z.string().min(1)` in `backend/src/api/schemas.ts`
+- [x] T2.2 Change `playerName` in `joinRoomSchema` similarly
+- [x] T2.3 Add tests for updated schemas in `backend/src/api/schemas.test.ts`
+
+### Phase 3: Backend — Integration Tests
+- [x] T3.1 Install `supertest` and `@types/supertest` as devDependencies in backend
+- [x] T3.2 Create `backend/src/api/rooms.test.ts`
+  - [x] T3.2a POST /rooms with valid name → 201, room.hostId set
+  - [x] T3.2b POST /rooms with empty name → 400
+  - [x] T3.2c POST /rooms/:code/join with valid code → 200, participant added
+  - [x] T3.2d POST /rooms/:code/join with unknown code → 404
+  - [x] T3.2e Two rooms created → each has independent participant list (isolation)
+
+### Phase 4: Frontend — API Client Fix
+- [x] T4.1 Fix `API_BASE_URL` in `frontend/src/services/api.ts` (remove `/bug`)
+- [x] T4.2 Add `hostId: string` to `RoomSnapshot` interface in `frontend/src/services/api.ts`
+- [x] T4.3 Add test: `joinRoom` sends POST to correct URL in `frontend/src/services/api.test.ts`
+
+### Phase 5: Frontend — Form Validation
+- [x] T5.1 Add client-side blank name guard in `CreateRoomPage.tsx`
+- [x] T5.2 Add client-side blank name guard in `JoinRoomPage.tsx`
+- [x] T5.3 Add client-side code format guard in `JoinRoomPage.tsx`
+
+### Phase 6: Frontend — Lobby Polling & Host Logic
+- [x] T6.1 Add `useEffect` with `setInterval` (2000ms) in `LobbyPage.tsx`
+- [x] T6.2 Guard against overlapping poll requests using a ref flag (`isFetchingRef`)
+- [x] T6.3 Return `clearInterval` from `useEffect` cleanup
+- [x] T6.4 Derive `isHost = room.hostId === participantId` from store state
+- [x] T6.5 Show "Start Game" button **only** when `isHost`
+- [x] T6.6 Disable "Start Game" (and show hint) when `isHost && participants.length < 2`
+- [x] T6.7 Remove manual "Refresh Room" button (replaced by automatic polling)
+- [x] T6.8 Show non-blocking poll error status (does not unmount Lobby)
+
+### Phase 7: Frontend — Tests
+- [x] T7.1 Create `frontend/src/pages/LobbyPage.test.tsx`
+  - [x] T7.1a Host + 1 participant → Start Game button absent or disabled
+  - [x] T7.1b Host + 2 participants → Start Game button enabled
+  - [x] T7.1c Non-host + 2 participants → Start Game button absent
+  - [x] T7.1d Polling: `setInterval` called on mount, `clearInterval` called on unmount
+
+### Phase 8: Validation
+- [x] T8.1 Run `cd backend && npm test` — all 27 tests pass
+- [x] T8.2 Run `cd frontend && npm test` — all 11 tests pass
+- [ ] T8.3 Manual: Browser A creates room → lobby shows host, polling starts
+- [ ] T8.4 Manual: Browser B joins room → Browser A lobby updates within ~2s
+- [ ] T8.5 Manual: Browser B cannot see Start Game; Browser A sees it only after B joins
+- [ ] T8.6 Manual: blank name → inline error, no request
+- [ ] T8.7 Manual: malformed code → inline error, no request
+- [ ] T8.8 Manual: unknown code → server error message shown
+- [ ] T8.9 Manual: two separate rooms do not share participant state
+
+---
+
+## Dependencies
+
+```
+T1.1, T1.2 → T1.3, T1.4 → T1.5
+T2.1, T2.2 → T2.3
+T1.1–T1.4, T2.1–T2.2 → T3.2
+T4.1, T4.2 → T4.3
+T1.1–T1.4 (hostId in model) → T4.2 (hostId in frontend type) → T6.4
+T6.1–T6.8 → T7.1
+Everything → T8.*
+```
