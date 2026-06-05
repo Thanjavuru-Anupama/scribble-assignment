@@ -74,6 +74,42 @@
 
 ---
 
+## Scenario 2 — Game Start & Drawer Flow
+
+### Phase 9: Backend — Game State Model
+- [x] T9.1 Update `RoomStatus` type to `"lobby" | "playing"` in `backend/src/models/game.ts`
+- [x] T9.2 Add `drawerId?: string` and `secretWord?: string` to `Room` interface
+- [x] T9.3 Add `drawerId?: string` and `secretWord?: string` to `RoomSnapshot` interface
+
+### Phase 10: Backend — Service & API
+- [x] T10.1 Add `startGame(code: string)` in `backend/src/services/roomStore.ts`
+  - [x] Validates room exists and has >= 2 participants
+  - [x] Sets `status = "playing"`, `drawerId = room.hostId`, `secretWord = STARTER_WORDS[0]`
+- [x] T10.2 Update `toRoomSnapshot` to only include `secretWord` if `viewerParticipantId === room.drawerId`
+- [x] T10.3 Add `POST /rooms/:code/start` endpoint in `backend/src/api/rooms.ts`
+- [x] T10.4 Add integration tests for start endpoint and visibility logic in `backend/src/api/rooms.test.ts`
+
+### Phase 11: Frontend — State & API Client
+- [x] T11.1 Update `RoomStatus` and `RoomSnapshot` types in `frontend/src/services/api.ts`
+- [x] T11.2 Add `startGame(code: string)` to `frontend/src/services/api.ts`
+- [x] T11.3 Add `startGame(code: string)` to `RoomStore` in `frontend/src/state/roomStore.ts`
+
+### Phase 12: Frontend — UI Implementation
+- [x] T12.1 `LobbyPage.tsx`: Hook up "Start Game" button to call `roomStore.startGame(room.code)`
+- [x] T12.2 `LobbyPage.tsx`: Add redirect to `/game` if `room.status === "playing"`
+- [x] T12.3 `GamePage.tsx`: Add 2s polling using `useEffect` and `roomStore.fetchRoom(room.code)`
+- [x] T12.4 `GamePage.tsx`: Add redirect to `/lobby` if `room.status !== "playing"`
+- [x] T12.5 `GamePage.tsx`: Display `secretWord` prominently if viewer is drawer (`participantId === room.drawerId`)
+- [x] T12.6 `GamePage.tsx`: Display "Waiting for [drawer name] to draw..." on the canvas if viewer is a guesser
+
+### Phase 13: Scenario 2 Validation
+- [x] T13.1 Run `cd backend && npm test` — ensure new tests pass
+- [x] T13.2 Run `cd frontend && npm test` — ensure GamePage tests pass
+- [ ] T13.3 Manual: Host clicks start, both host and guest are redirected to `/game`
+- [ ] T13.4 Manual: Host sees the secret word, guest does not
+
+---
+
 ## Dependencies
 
 ```

@@ -74,6 +74,48 @@ A player opens the app and wants to either host or join a drawing game. The syst
 
 ---
 
+## Scenario 2 — Game Start & Drawer Flow
+
+### Context
+
+When the host starts the game, the room transitions from the lobby to the active game state. The host is assigned as the first drawer, and a secret word is deterministically selected. Only the drawer should see the secret word.
+
+### Acceptance Criteria
+
+#### AC-12: Start Game Action
+- **Given** the host is in the lobby with at least 2 players,
+  **When** the host clicks "Start Game",
+  **Then** a `POST /rooms/:code/start` request is sent, and the room status changes to `playing`.
+
+#### AC-13: Drawer Assignment
+- **Given** a game has started,
+  **When** the first round begins,
+  **Then** the host is assigned as the drawer (`drawerId = room.hostId`).
+
+#### AC-14: Secret Word Selection
+- **Given** a game has started,
+  **When** the first round begins,
+  **Then** a secret word is deterministically selected from the starter list (e.g., the first word).
+
+#### AC-15: Secret Word Visibility
+- **Given** a game has started and the `secretWord` is set,
+  **When** a client requests the room state,
+  **Then** the `secretWord` is included in the response **only** if the requester's `participantId` matches the `drawerId`. Guessers receive `undefined` or null for this field.
+
+#### AC-16: Game Page Redirection
+- **Given** players are on the Lobby screen,
+  **When** the room status changes to `playing`,
+  **Then** all players are automatically redirected to the Game Page (`/game`).
+
+#### AC-17: Game Page UI
+- **Given** a player is on the Game Page,
+  **When** the page renders,
+  **Then**:
+  - If the player is the drawer, the secret word is prominently displayed above the canvas.
+  - If the player is a guesser, the canvas displays "Waiting for [drawer name] to draw..." and the secret word is hidden.
+
+---
+
 ### Edge Cases
 
 | Edge Case | Expected Behavior |

@@ -158,3 +158,103 @@ describe("Room isolation", () => {
     expect(getA.body.room.participants[0].name).toBe("PlayerA");
   });
 });
+
+describe("POST /rooms/:code/start", () => {
+  it("starts the game and assigns the host as drawer if >= 2 players", async () => {
+    const createResponse = await request
+      .post("/rooms")
+      .send({ playerName: "Host" })
+      .set("Content-Type", "application/json");
+
+    const code = createResponse.body.room.code;
+    const hostId = createResponse.body.participantId;
+
+    await request
+      .post(`/rooms/${code}/join`)
+      .send({ playerName: "Guest" })
+      .set("Content-Type", "application/json");
+
+    const startResponse = await request
+      .post(`/rooms/${code}/start`)
+      .send({ participantId: hostId })
+      .set("Content-Type", "application/json");
+
+    expect(startResponse.status).toBe(200);
+    expect(startResponse.body.room.status).toBe("playing");
+    expect(startResponse.body.room.drawerId).toBe(hostId);
+    expect(startResponse.body.room.secretWord).toBeDefined();
+  });
+
+  it("returns 400 if less than 2 players are in the room", async () => {
+    const createResponse = await request
+      .post("/rooms")
+      .send({ playerName: "HostAlone" })
+      .set("Content-Type", "application/json");
+
+    const code = createResponse.body.room.code;
+    const hostId = createResponse.body.participantId;
+
+    const startResponse = await request
+      .post(`/rooms/${code}/start`)
+      .send({ participantId: hostId })
+      .set("Content-Type", "application/json");
+
+    expect(startResponse.status).toBe(400);
+  });
+
+  it("returns 403 if a non-host tries to start the game", async () => {
+    const createResponse = await request
+      .post("/rooms")
+      .send({ playerName: "Host" })
+      .set("Content-Type", "application/json");
+
+    const code = createResponse.body.room.code;
+
+    const joinResponse = await request
+      .post(`/rooms/${code}/join`)
+      .send({ playerName: "Guest" })
+      .set("Content-Type", "application/json");
+
+    const guestId = joinResponse.body.participantId;
+
+    const startResponse = await request
+      .post(`/rooms/${code}/start`)
+      .send({ participantId: guestId })
+      .set("Content-Type", "application/json");
+
+    expect(startResponse.status).toBe(403);
+  });
+
+  it("exposes the secretWord only to the drawer", async () => {
+    const createResponse = await request
+      .post("/rooms")
+      .send({ playerName: "HostDrawer" })
+      .set("Content-Type", "application/json");
+
+    const code = createResponse.body.room.code;
+    const hostId = createResponse.body.participantId;
+
+    const joinResponse = await request
+      .post(`/rooms/${code}/join`)
+      .send({ playerName: "Guest" })
+      .set("Content-Type", "application/json");
+
+    const guestId = joinResponse.body.participantId;
+
+    await request
+      .post(`/rooms/${code}/start`)
+      .send({ participantId: hostId })
+      .set("Content-Type", "application/json");
+
+    const getHostResponse = await request
+      .get(`/rooms/${code}`)
+      .query({ participantId: hostId });
+
+    const getGuestResponse = await request
+      .get(`/rooms/${code}`)
+      .query({ participantId: guestId });
+
+    expect(getHostResponse.body.room.secretWord).toBeDefined();
+    expect(getGuestResponse.body.room.secretWord).toBeUndefined();
+  });
+});

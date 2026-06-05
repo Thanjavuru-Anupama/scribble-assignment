@@ -19,6 +19,8 @@ export function LobbyPage() {
   useEffect(() => {
     if (!room) {
       navigate("/", { replace: true });
+    } else if (room.status === "playing") {
+      navigate("/game", { replace: true });
     }
   }, [navigate, room]);
 
@@ -53,8 +55,14 @@ export function LobbyPage() {
   const isHost = room.hostId === participantId;
   const canStart = isHost && room.participants.length >= MIN_PLAYERS_TO_START;
 
-  function handleStartGame() {
-    navigate("/game");
+  async function handleStartGame() {
+    try {
+      await roomStore.startGame();
+      // Navigation happens automatically via the useEffect above when room status changes
+    } catch (error) {
+      // In a real app we might show a toast, but for now log to console
+      console.error("Failed to start game:", error);
+    }
   }
 
   return (

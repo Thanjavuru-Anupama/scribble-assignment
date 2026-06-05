@@ -4,9 +4,10 @@ import {
   HttpError,
   joinRoomSchema,
   roomCodeParamsSchema,
-  roomViewerQuerySchema
+  roomViewerQuerySchema,
+  startGameSchema
 } from "./schemas.js";
-import { createRoom, getRoom, joinRoom, toRoomSnapshot } from "../services/roomStore.js";
+import { createRoom, getRoom, joinRoom, startGame, toRoomSnapshot } from "../services/roomStore.js";
 
 export function createRoomsRouter() {
   const router = Router();
@@ -41,6 +42,38 @@ export function createRoomsRouter() {
       });
     } catch (error) {
       next(error);
+    }
+  });
+
+  router.post("/:code/start", (request, response, next) => {
+    try {
+      const { code } = roomCodeParamsSchema.parse(request.params);
+      const { participantId } = startGameSchema.parse(request.body);
+      const room = getRoom(code.toUpperCase());
+
+      if (!room) {
+        throw new HttpError(404, "Unable to find room");
+      }
+
+      if (room.hostId !== participantId) {
+        throw new HttpError(403, "Only the host can start the game");
+      }
+
+      const updatedRoom = startGame(code.toUpperCase());
+
+      if (!updatedRoom) {
+        throw new HttpError(404, "Unable to start game");
+      }
+
+      response.json({
+        room: toRoomSnapshot(updatedRoom, participantId)
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === "Need at least 2 players to start") {
+        next(new HttpError(400, error.message));
+      } else {
+        next(error);
+      }
     }
   });
 

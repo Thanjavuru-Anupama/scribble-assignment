@@ -1,34 +1,64 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "../components/Card";
 import { GuessForm } from "../components/GuessForm";
 import { ResultPanel } from "../components/ResultPanel";
 import { RoomCodeBadge } from "../components/RoomCodeBadge";
 import { Scoreboard } from "../components/Scoreboard";
-import { useRoomState } from "../state/roomStore";
+import { useRoomState, useRoomStore } from "../state/roomStore";
+
+const POLL_INTERVAL_MS = 2000;
 
 export function GamePage() {
   const navigate = useNavigate();
+  const roomStore = useRoomStore();
   const { room, participantId } = useRoomState();
+  const isFetchingRef = useRef(false);
 
   useEffect(() => {
     if (!room) {
       navigate("/", { replace: true });
+    } else if (room.status !== "playing") {
+      navigate("/lobby", { replace: true });
     }
   }, [navigate, room]);
+
+  useEffect(() => {
+    if (!room) return;
+
+    async function poll() {
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
+      try {
+        await roomStore.fetchRoom();
+      } catch (error) {
+        console.error("Game poll failed", error);
+      } finally {
+        isFetchingRef.current = false;
+      }
+    }
+
+    const intervalId = setInterval(poll, POLL_INTERVAL_MS);
+    return () => clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!room) {
     return null;
   }
 
   const viewer = room.participants.find((participant) => participant.id === participantId) ?? null;
+  const drawer = room.participants.find((participant) => participant.id === room.drawerId);
+  const isDrawer = room.drawerId === participantId;
 
   return (
     <section className="panel game-page">
       <div className="game-page__header">
         <div className="game-page__header-left">
           <span className="section-kicker">Round 1</span>
-          <h1 className="game-page__title">Guess the Word!</h1>
+          <h1 className="game-page__title">
+            {isDrawer ? `Draw: ${room.secretWord}` : "Guess the Word!"}
+          </h1>
         </div>
         <RoomCodeBadge code={room.code} />
       </div>
@@ -40,9 +70,17 @@ export function GamePage() {
         </aside>
 
         <div className="game-page__main">
-          <Card title="Canvas">
-            <div className="canvas-placeholder" style={{ minHeight: '500px', backgroundColor: '#ffffff', border: '1px solid #e5e7eb' }}>
-              Waiting for drawer...
+          <Card title={isDrawer ? "Your Canvas" : "Canvas"}>
+            <div className="canvas-placeholder" style={{ minHeight: '500px', backgroundColor: '#ffffff', border: '1px solid #e5e7eb', padding: '2rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {isDrawer ? (
+                <p style={{ color: '#6b7280' }}>
+                  You are the drawer! Draw <strong>{room.secretWord}</strong>.
+                </p>
+              ) : (
+                <p style={{ color: '#6b7280' }}>
+                  Waiting for {drawer?.name ?? "drawer"} to draw...
+                </p>
+              )}
             </div>
           </Card>
         </div>
@@ -56,7 +94,7 @@ export function GamePage() {
               </div>
               <div>
                 <dt>Status</dt>
-                <dd>Playing</dd>
+                <dd>{isDrawer ? "Drawing" : "Guessing"}</dd>
               </div>
             </dl>
           </Card>
