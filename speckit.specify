@@ -145,3 +145,84 @@ When the host starts the game, the room transitions from the lobby to the active
 | Version | Date | Change |
 |---------|------|--------|
 | 1.0 | 2026-06-05 | Initial spec for Scenario 1 |
+| 2.0 | 2026-06-05 | Added Scenario 2 (Game Start & Drawer Flow) |
+| 3.0 | 2026-06-05 | Added Scenario 3 (Gameplay Interaction) |
+
+---
+
+## Scenario 3 — Gameplay Interaction
+
+### Context
+
+A round is active: a drawer and one or more guessers are on the Game Page. The drawer can see the secret word, draws on a canvas (placeholder in this sprint), and can clear it. Guessers submit text guesses which are validated, compared to the secret word, and scored. All guess history is visible to everyone via polling.
+
+---
+
+### Acceptance Criteria
+
+#### AC-18: Initial Scores at Zero
+- **Given** a game has just started,
+  **When** the Game Page renders,
+  **Then** every participant's score is displayed as 0.
+
+#### AC-19: Drawer Canvas Placeholder
+- **Given** the viewer is the drawer,
+  **When** the Game Page renders,
+  **Then** the canvas area is clearly identified as the drawing surface and a "Clear Canvas" button is visible (even if the canvas is a visual placeholder for this sprint).
+
+#### AC-20: Empty Guess Rejection
+- **Given** a guesser is on the Game Page,
+  **When** they submit a blank or whitespace-only guess,
+  **Then** an inline error message is shown and **no** HTTP request is sent.
+
+#### AC-21: Guess Submission
+- **Given** a guesser submits a non-empty guess,
+  **When** `POST /rooms/:code/guess` is called with `{ participantId, guess }`,
+  **Then** the guess is stored and the response includes the updated guess history for that room.
+
+#### AC-22: Correct Guess — Case-Insensitive Match
+- **Given** the secret word is `"rocket"`,
+  **When** a guesser submits `"Rocket"`, `"ROCKET"`, or `"  rocket  "` (after trim),
+  **Then** the guess is evaluated as **correct** and the guesser's score increases by 100.
+
+#### AC-23: Incorrect Guess — No Score Change
+- **Given** a guesser submits a word that does not match the secret word,
+  **When** the guess is evaluated,
+  **Then** the guess is recorded as incorrect and the guesser's score remains unchanged (0 added).
+
+#### AC-24: Guess History Visibility
+- **Given** a guess has been submitted by any player,
+  **When** other players poll for the room state,
+  **Then** the full guess history (player name, guess text, correct/incorrect flag) is included in the polled response.
+
+#### AC-25: Drawer Cannot Guess
+- **Given** the viewer is the drawer,
+  **When** the Game Page renders,
+  **Then** the guess form is **hidden** or **disabled** with a message explaining they are the drawer.
+
+#### AC-26: Scores in Scoreboard
+- **Given** players have submitted guesses,
+  **When** the Scoreboard renders,
+  **Then** it shows each participant's name and their current score, sorted highest-first.
+
+---
+
+### Edge Cases
+
+| Edge Case | Expected Behavior |
+|-----------|-------------------|
+| Guesser submits whitespace only (e.g. `"   "`) | Treated as empty; inline error, no request |
+| Guess text has leading/trailing spaces | Trimmed before comparison (e.g. `"  rocket  "` matches `"rocket"`) |
+| Guesser submits after already guessing correctly | Subsequent guesses are still recorded; score is cumulative |
+| Drawer submits a guess via API directly | Backend still processes it (no server-side drawer block); UI prevents it |
+| Poll fires while request is in-flight | Second poll skipped (debounce guard already in place) |
+
+---
+
+### Out-of-Scope for This Scenario
+
+- Real canvas drawing (WebSockets required — out of scope per AGENTS.md)
+- Round timer / auto-advance
+- Host transfer, kick, or rematch
+- Any database or authentication
+

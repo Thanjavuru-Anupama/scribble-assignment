@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "../components/Card";
+import { Canvas } from "../components/Canvas";
 import { GuessForm } from "../components/GuessForm";
 import { ResultPanel } from "../components/ResultPanel";
 import { RoomCodeBadge } from "../components/RoomCodeBadge";
@@ -71,17 +72,11 @@ export function GamePage() {
 
         <div className="game-page__main">
           <Card title={isDrawer ? "Your Canvas" : "Canvas"}>
-            <div className="canvas-placeholder" style={{ minHeight: '500px', backgroundColor: '#ffffff', border: '1px solid #e5e7eb', padding: '2rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {isDrawer ? (
-                <p style={{ color: '#6b7280' }}>
-                  You are the drawer! Draw <strong>{room.secretWord}</strong>.
-                </p>
-              ) : (
-                <p style={{ color: '#6b7280' }}>
-                  Waiting for {drawer?.name ?? "drawer"} to draw...
-                </p>
-              )}
-            </div>
+            <Canvas
+              isDrawer={isDrawer}
+              drawerName={drawer?.name}
+              secretWord={room.secretWord}
+            />
           </Card>
         </div>
 

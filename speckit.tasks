@@ -119,5 +119,53 @@ T1.1–T1.4, T2.1–T2.2 → T3.2
 T4.1, T4.2 → T4.3
 T1.1–T1.4 (hostId in model) → T4.2 (hostId in frontend type) → T6.4
 T6.1–T6.8 → T7.1
-Everything → T8.*
+T9.1–T9.3 → T10.1–T10.4
+T10.1–T10.4 → T11.1–T11.3 → T12.1–T12.6
+Everything → T8.*, T13.*, T17.*
 ```
+
+---
+
+## Scenario 3 — Gameplay Interaction
+
+### Phase 14: Backend — Data Model
+- [x] T14.1 Add `Guess` interface to `backend/src/models/game.ts` (`{ id, participantId, participantName, text, correct, submittedAt }`)
+- [x] T14.2 Add `scores: Record<string, number>` and `guesses: Guess[]` to `Room` interface
+- [x] T14.3 Add `scores: Record<string, number>` and `guesses: Guess[]` to `RoomSnapshot` interface
+
+### Phase 15: Backend — Service & API
+- [x] T15.1 Initialise `scores` and `guesses` as empty structures in `createRoom` and `startGame`
+- [x] T15.2 Add `submitGuess(code, participantId, guessText)` in `backend/src/services/roomStore.ts`
+  - [x] Trim the guess; reject if empty (throw Error)
+  - [x] Look up secret word; compare case-insensitively
+  - [x] If correct, add 100 to `scores[participantId]`
+  - [x] Push the `Guess` record to `room.guesses`
+- [x] T15.3 Expose `guesses` and `scores` in `toRoomSnapshot`
+- [x] T15.4 Add `guessSchema` Zod schema in `backend/src/api/schemas.ts`
+- [x] T15.5 Add `POST /rooms/:code/guess` endpoint in `backend/src/api/rooms.ts`
+- [x] T15.6 Add integration tests in `backend/src/api/rooms.test.ts`
+  - [x] Correct guess increments score by 100 (case-insensitive)
+  - [x] Incorrect guess adds 0
+  - [x] Empty/whitespace guess returns 400
+  - [x] Guess history is visible to all participants after polling
+
+### Phase 16: Frontend — State & API Client
+- [x] T16.1 Add `Guess` type and update `RoomSnapshot` in `frontend/src/services/api.ts`
+- [x] T16.2 Add `submitGuess(code, participantId, guess)` to `frontend/src/services/api.ts`
+- [x] T16.3 Add `submitGuess(text)` to `RoomStore` in `frontend/src/state/roomStore.ts`
+
+### Phase 17: Frontend — UI Implementation
+- [x] T17.1 `GuessForm.tsx`: Connect to store; validate non-empty before calling API; show inline error
+- [x] T17.2 `GuessForm.tsx`: Disable/hide for the drawer with an explanatory message
+- [x] T17.3 `ResultPanel.tsx`: Render the full guess history from `room.guesses`
+- [x] T17.4 `Scoreboard.tsx`: Render per-participant scores sorted highest-first from `room.scores`
+- [x] T17.5 `GamePage.tsx`: Show "Clear Canvas" button for the drawer (client-side state reset only)
+
+### Phase 18: Scenario 3 Validation
+- [x] T18.1 Run `cd backend && npm test` — all tests pass
+- [x] T18.2 Run `cd frontend && npm test` — all tests pass
+- [ ] T18.3 Manual: Guesser submits blank guess → inline error, no network call
+- [ ] T18.4 Manual: Guesser submits correct word (case-insensitive) → score +100 in scoreboard
+- [ ] T18.5 Manual: Guesser submits wrong word → score unchanged, guess appears in history
+- [ ] T18.6 Manual: Drawer sees canvas + "Clear Canvas" button, no guess form
+

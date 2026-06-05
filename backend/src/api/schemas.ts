@@ -12,6 +12,12 @@ export const startGameSchema = z.object({
   participantId: z.string()
 });
 
+export const guessSchema = z.object({
+  participantId: z.string(),
+  guess: z.string()
+});
+
+
 export const roomCodeParamsSchema = z.object({
   code: z.string()
 });

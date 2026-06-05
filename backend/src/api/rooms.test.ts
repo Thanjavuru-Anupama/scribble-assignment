@@ -258,3 +258,135 @@ describe("POST /rooms/:code/start", () => {
     expect(getGuestResponse.body.room.secretWord).toBeUndefined();
   });
 });
+
+// ── Shared helper: create a started 2-player room ────────────────────────
+async function startedRoom() {
+  const create = await request
+    .post("/rooms")
+    .send({ playerName: "Host" })
+    .set("Content-Type", "application/json");
+
+  const code: string = create.body.room.code;
+  const hostId: string = create.body.participantId;
+
+  const join = await request
+    .post(`/rooms/${code}/join`)
+    .send({ playerName: "Guest" })
+    .set("Content-Type", "application/json");
+
+  const guestId: string = join.body.participantId;
+
+  await request
+    .post(`/rooms/${code}/start`)
+    .send({ participantId: hostId })
+    .set("Content-Type", "application/json");
+
+  return { code, hostId, guestId };
+}
+
+describe("POST /rooms/:code/guess", () => {
+  it("accepts a correct guess and adds 100 to the guesser's score", async () => {
+    const { code, guestId } = await startedRoom();
+
+    // STARTER_WORDS[0] is "rocket"
+    const response = await request
+      .post(`/rooms/${code}/guess`)
+      .send({ participantId: guestId, guess: "rocket" })
+      .set("Content-Type", "application/json");
+
+    expect(response.status).toBe(200);
+    expect(response.body.room.scores[guestId]).toBe(100);
+    expect(response.body.room.guesses).toHaveLength(1);
+    expect(response.body.room.guesses[0].correct).toBe(true);
+  });
+
+  it("is case-insensitive — 'ROCKET' still scores 100", async () => {
+    const { code, guestId } = await startedRoom();
+
+    const response = await request
+      .post(`/rooms/${code}/guess`)
+      .send({ participantId: guestId, guess: "ROCKET" })
+      .set("Content-Type", "application/json");
+
+    expect(response.status).toBe(200);
+    expect(response.body.room.scores[guestId]).toBe(100);
+    expect(response.body.room.guesses[0].correct).toBe(true);
+  });
+
+  it("trims whitespace before comparison — '  rocket  ' scores 100", async () => {
+    const { code, guestId } = await startedRoom();
+
+    const response = await request
+      .post(`/rooms/${code}/guess`)
+      .send({ participantId: guestId, guess: "  rocket  " })
+      .set("Content-Type", "application/json");
+
+    expect(response.status).toBe(200);
+    expect(response.body.room.scores[guestId]).toBe(100);
+  });
+
+  it("accepts an incorrect guess and adds 0 to the score", async () => {
+    const { code, guestId } = await startedRoom();
+
+    const response = await request
+      .post(`/rooms/${code}/guess`)
+      .send({ participantId: guestId, guess: "pizza" })
+      .set("Content-Type", "application/json");
+
+    expect(response.status).toBe(200);
+    expect(response.body.room.scores[guestId]).toBe(0);
+    expect(response.body.room.guesses[0].correct).toBe(false);
+  });
+
+  it("returns 400 for an empty guess", async () => {
+    const { code, guestId } = await startedRoom();
+
+    const response = await request
+      .post(`/rooms/${code}/guess`)
+      .send({ participantId: guestId, guess: "" })
+      .set("Content-Type", "application/json");
+
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 400 for a whitespace-only guess", async () => {
+    const { code, guestId } = await startedRoom();
+
+    const response = await request
+      .post(`/rooms/${code}/guess`)
+      .send({ participantId: guestId, guess: "   " })
+      .set("Content-Type", "application/json");
+
+    expect(response.status).toBe(400);
+  });
+
+  it("guess history is visible to all participants via polling", async () => {
+    const { code, hostId, guestId } = await startedRoom();
+
+    await request
+      .post(`/rooms/${code}/guess`)
+      .send({ participantId: guestId, guess: "rocket" })
+      .set("Content-Type", "application/json");
+
+    // Poll as the host — host should see the guess in history
+    const poll = await request
+      .get(`/rooms/${code}`)
+      .query({ participantId: hostId });
+
+    expect(poll.body.room.guesses).toHaveLength(1);
+    expect(poll.body.room.guesses[0].participantName).toBe("Guest");
+    expect(poll.body.room.guesses[0].text).toBe("rocket");
+  });
+
+  it("all scores initialised to 0 at game start", async () => {
+    const { code, hostId, guestId } = await startedRoom();
+
+    const poll = await request
+      .get(`/rooms/${code}`)
+      .query({ participantId: hostId });
+
+    expect(poll.body.room.scores[hostId]).toBe(0);
+    expect(poll.body.room.scores[guestId]).toBe(0);
+  });
+});
+
