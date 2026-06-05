@@ -8,6 +8,8 @@ vi.mock("react-router-dom", () => ({
 
 const mockFetchRoom = vi.fn().mockResolvedValue(null);
 const mockSubmitGuess = vi.fn().mockResolvedValue(null);
+const mockEndRound = vi.fn().mockResolvedValue(null);
+const mockRestartGame = vi.fn().mockResolvedValue(null);
 
 HTMLCanvasElement.prototype.getContext = vi.fn().mockReturnValue({
   clearRect: vi.fn(),
@@ -22,6 +24,8 @@ vi.mock("../state/roomStore", () => ({
   useRoomStore: () => ({
     fetchRoom: mockFetchRoom,
     submitGuess: mockSubmitGuess,
+    endRound: mockEndRound,
+    restartGame: mockRestartGame,
   }),
   useRoomState: () => mockRoomStateValue,
 }));
@@ -217,3 +221,142 @@ describe("GamePage — Scoreboard and Guesses", () => {
     expect(historyItems[1].textContent).not.toContain("Correct");
   });
 });
+
+describe("GamePage — Scenario 4 (Result & Restart)", () => {
+  it("renders end round button during active play if the viewer is the host", async () => {
+    mockRoomStateValue = {
+      room: {
+        code: "ABCD",
+        status: "playing",
+        hostId: "host-id",
+        drawerId: "host-id",
+        secretWord: "rocket",
+        participants: [
+          { id: "host-id", name: "Alice", joinedAt: "" },
+          { id: "guest-id", name: "Bob", joinedAt: "" },
+        ],
+        scores: { "host-id": 0, "guest-id": 0 },
+        guesses: [],
+        availableWords: [],
+        roles: [],
+      },
+      participantId: "host-id",
+      error: null,
+      isLoading: false,
+    };
+
+    await renderGamePage();
+
+    const endBtn = container.querySelector("#end-round-btn");
+    expect(endBtn).not.toBeNull();
+
+    await act(async () => {
+      endBtn?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+
+    expect(mockEndRound).toHaveBeenCalled();
+  });
+
+  it("does not render end round button if the viewer is not the host", async () => {
+    mockRoomStateValue = {
+      room: {
+        code: "ABCD",
+        status: "playing",
+        hostId: "host-id",
+        drawerId: "host-id",
+        secretWord: "rocket",
+        participants: [
+          { id: "host-id", name: "Alice", joinedAt: "" },
+          { id: "guest-id", name: "Bob", joinedAt: "" },
+        ],
+        scores: { "host-id": 0, "guest-id": 0 },
+        guesses: [],
+        availableWords: [],
+        roles: [],
+      },
+      participantId: "guest-id",
+      error: null,
+      isLoading: false,
+    };
+
+    await renderGamePage();
+
+    const endBtn = container.querySelector("#end-round-btn");
+    expect(endBtn).toBeNull();
+  });
+
+  it("renders results view when status is result and shows restart button to host", async () => {
+    mockRoomStateValue = {
+      room: {
+        code: "ABCD",
+        status: "result",
+        hostId: "host-id",
+        drawerId: "host-id",
+        secretWord: "rocket",
+        participants: [
+          { id: "host-id", name: "Alice", joinedAt: "" },
+          { id: "guest-id", name: "Bob", joinedAt: "" },
+        ],
+        scores: { "host-id": 0, "guest-id": 0 },
+        guesses: [],
+        availableWords: [],
+        roles: [],
+      },
+      participantId: "host-id",
+      error: null,
+      isLoading: false,
+    };
+
+    await renderGamePage();
+
+    const resultsView = container.querySelector("#results-view");
+    expect(resultsView).not.toBeNull();
+    expect(resultsView?.textContent).toContain("The correct word was: rocket");
+
+    const guessFormMsg = container.querySelector("#guess-form-result-message");
+    expect(guessFormMsg).not.toBeNull();
+    expect(guessFormMsg?.textContent).toContain("Guessing is closed");
+
+    const restartBtn = container.querySelector("#results-restart-btn");
+    expect(restartBtn).not.toBeNull();
+
+    await act(async () => {
+      restartBtn?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    });
+
+    expect(mockRestartGame).toHaveBeenCalled();
+  });
+
+  it("renders results view without restart button and shows waiting message to non-host", async () => {
+    mockRoomStateValue = {
+      room: {
+        code: "ABCD",
+        status: "result",
+        hostId: "host-id",
+        drawerId: "host-id",
+        secretWord: "rocket",
+        participants: [
+          { id: "host-id", name: "Alice", joinedAt: "" },
+          { id: "guest-id", name: "Bob", joinedAt: "" },
+        ],
+        scores: { "host-id": 0, "guest-id": 0 },
+        guesses: [],
+        availableWords: [],
+        roles: [],
+      },
+      participantId: "guest-id",
+      error: null,
+      isLoading: false,
+    };
+
+    await renderGamePage();
+
+    const waitingMsg = container.querySelector("#results-waiting-message");
+    expect(waitingMsg).not.toBeNull();
+    expect(waitingMsg?.textContent).toContain("Waiting for the host to restart");
+
+    const restartBtn = container.querySelector("#results-restart-btn");
+    expect(restartBtn).toBeNull();
+  });
+});
+

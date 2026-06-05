@@ -9,6 +9,15 @@ export function GuessForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isDrawer = room?.drawerId === participantId;
+  const isResult = room?.status === "result";
+
+  if (isResult) {
+    return (
+      <p id="guess-form-result-message" style={{ color: "#6b7280", fontSize: "0.875rem", margin: 0 }}>
+        The round has ended. Guessing is closed!
+      </p>
+    );
+  }
 
   if (isDrawer) {
     return (

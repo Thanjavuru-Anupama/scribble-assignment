@@ -390,3 +390,74 @@ describe("POST /rooms/:code/guess", () => {
   });
 });
 
+describe("Scenario 4 — Result & Restart", () => {
+  it("allows host to end round, transitions status to result, and reveals secret word to guessers", async () => {
+    const { code, hostId, guestId } = await startedRoom();
+
+    const response = await request
+      .post(`/rooms/${code}/end`)
+      .send({ participantId: hostId })
+      .set("Content-Type", "application/json");
+
+    expect(response.status).toBe(200);
+    expect(response.body.room.status).toBe("result");
+
+    // Poll as the guest — guest should now be able to see the secret word!
+    const poll = await request
+      .get(`/rooms/${code}`)
+      .query({ participantId: guestId });
+
+    expect(poll.body.room.secretWord).toBe("rocket");
+  });
+
+  it("denies non-host from ending the round", async () => {
+    const { code, guestId } = await startedRoom();
+
+    const response = await request
+      .post(`/rooms/${code}/end`)
+      .send({ participantId: guestId })
+      .set("Content-Type", "application/json");
+
+    expect(response.status).toBe(403);
+  });
+
+  it("allows host to restart game, transitions status back to lobby, and clears game state", async () => {
+    const { code, hostId, guestId } = await startedRoom();
+
+    // First end the round
+    await request
+      .post(`/rooms/${code}/end`)
+      .send({ participantId: hostId });
+
+    // Restart the game
+    const restartResponse = await request
+      .post(`/rooms/${code}/restart`)
+      .send({ participantId: hostId })
+      .set("Content-Type", "application/json");
+
+    expect(restartResponse.status).toBe(200);
+    expect(restartResponse.body.room.status).toBe("lobby");
+    expect(restartResponse.body.room.drawerId).toBeUndefined();
+    expect(restartResponse.body.room.secretWord).toBeUndefined();
+    expect(restartResponse.body.room.guesses).toHaveLength(0);
+    expect(restartResponse.body.room.scores).toEqual({});
+
+    // Participants list is preserved!
+    expect(restartResponse.body.room.participants).toHaveLength(2);
+    expect(restartResponse.body.room.participants[0].id).toBe(hostId);
+    expect(restartResponse.body.room.participants[1].id).toBe(guestId);
+  });
+
+  it("denies non-host from restarting the game", async () => {
+    const { code, guestId } = await startedRoom();
+
+    const response = await request
+      .post(`/rooms/${code}/restart`)
+      .send({ participantId: guestId })
+      .set("Content-Type", "application/json");
+
+    expect(response.status).toBe(403);
+  });
+});
+
+

@@ -169,3 +169,39 @@ Everything → T8.*, T13.*, T17.*
 - [ ] T18.5 Manual: Guesser submits wrong word → score unchanged, guess appears in history
 - [ ] T18.6 Manual: Drawer sees canvas + "Clear Canvas" button, no guess form
 
+---
+
+## Scenario 4 — Result, Restart & Final Validation
+
+### Phase 19: Spec Kit Updates
+- [x] T19.1 Update `speckit.specify`
+- [x] T19.2 Update `speckit.plan`
+- [x] T19.3 Update `speckit.tasks` (this update)
+
+### Phase 20: Backend — Model & Endpoints
+- [ ] T20.1 Update `RoomStatus` type in `backend/src/models/game.ts`
+- [ ] T20.2 Add `endRound` and `restartGame` in `backend/src/services/roomStore.ts`
+- [ ] T20.3 Update `toRoomSnapshot` to expose secretWord in `"result"` status
+- [ ] T20.4 Add schemas in `backend/src/api/schemas.ts`
+- [ ] T20.5 Add `POST /rooms/:code/end` and `POST /rooms/:code/restart` in `backend/src/api/rooms.ts`
+- [ ] T20.6 Add backend tests in `backend/src/api/rooms.test.ts`
+
+### Phase 21: Frontend — State & API Client
+- [ ] T21.1 Update `RoomStatus` and `RoomSnapshot` in `frontend/src/services/api.ts`
+- [ ] T21.2 Add `endRound` and `restartGame` in `frontend/src/services/api.ts`
+- [ ] T21.3 Add `endRound` and `restartGame` actions in `frontend/src/state/roomStore.ts`
+
+### Phase 22: Frontend — UI Implementation
+- [ ] T22.1 Update redirect check in `GamePage.tsx` to handle `"result"` status
+- [ ] T22.2 Add "End Round" button on `GamePage.tsx` for the host
+- [ ] T22.3 Show Results view on `GamePage.tsx` when status is `"result"` (hiding canvas/guess form, revealing word)
+- [ ] T22.4 Add "Restart Game" button on results view for the host
+- [ ] T22.5 Add unit/integration tests for results/restart in `GamePage.test.tsx`
+
+### Phase 23: Verification & Validation
+- [ ] T23.1 Run `cd backend && npm test` — all tests pass
+- [ ] T23.2 Run `cd frontend && npm test` — all tests pass
+- [ ] T23.3 Manual: End game as host -> both players stay on results view with correct word revealed
+- [ ] T23.4 Manual: Restart game as host -> both players redirected back to lobby, round state cleared
+
+

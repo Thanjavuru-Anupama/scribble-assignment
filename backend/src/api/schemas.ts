@@ -17,6 +17,13 @@ export const guessSchema = z.object({
   guess: z.string()
 });
 
+export const endRoundSchema = z.object({
+  participantId: z.string()
+});
+
+export const restartGameSchema = z.object({
+  participantId: z.string()
+});
 
 export const roomCodeParamsSchema = z.object({
   code: z.string()

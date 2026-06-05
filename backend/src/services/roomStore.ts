@@ -170,15 +170,48 @@ export function submitGuess(code: string, participantId: string, guessText: stri
   return cloneRoom(room);
 }
 
+export function endRound(code: string) {
+  const room = rooms.get(code);
+
+  if (!room) {
+    return null;
+  }
+
+  room.status = "result";
+  room.updatedAt = now();
+  rooms.set(room.code, room);
+
+  return cloneRoom(room);
+}
+
+export function restartGame(code: string) {
+  const room = rooms.get(code);
+
+  if (!room) {
+    return null;
+  }
+
+  room.status = "lobby";
+  room.drawerId = undefined;
+  room.secretWord = undefined;
+  room.scores = {};
+  room.guesses = [];
+  room.updatedAt = now();
+  rooms.set(room.code, room);
+
+  return cloneRoom(room);
+}
+
 export function toRoomSnapshot(room: Room, viewerParticipantId?: string): RoomSnapshot {
   const isDrawer = viewerParticipantId === room.drawerId;
+  const isResult = room.status === "result";
 
   return {
     code: room.code,
     status: room.status,
     hostId: room.hostId,
     drawerId: room.drawerId,
-    secretWord: isDrawer ? room.secretWord : undefined,
+    secretWord: (isDrawer || isResult) ? room.secretWord : undefined,
     participants: room.participants.map((participant) => ({ ...participant })),
     scores: { ...room.scores },
     guesses: room.guesses.map((g) => ({ ...g })),

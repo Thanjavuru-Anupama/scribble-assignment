@@ -163,3 +163,31 @@ Browser (mounted)
 | Supertest not installed in backend | Add as devDependency if needed; alternatively use vitest's fetch mocking |
 | `import.meta.env` not available in vitest | Already handled by frontend's vitest config (jsdom + vite plugin) |
 | Polling causes test flakiness | Use `vi.useFakeTimers()` to control interval in Lobby tests |
+
+---
+
+## Scenario 4 — Result, Restart & Final Validation
+
+### Technical Plan
+
+#### 1. Backend Changes
+- **Data Models**: Update `RoomStatus` to `"lobby" | "playing" | "result"`.
+- **Services**:
+  - `endRound(code)`: sets status to `"result"`.
+  - `restartGame(code)`: sets status to `"lobby"`, clears `drawerId`, `secretWord`, `guesses`, `scores` but keeps `participants`.
+  - `toRoomSnapshot`: modifies visibility rules to share `secretWord` with all participants when room is in `"result"` state.
+- **Endpoints**:
+  - `POST /rooms/:code/end`: expects `{ participantId }`. Checks if the participant is the host. Calls `endRound()`.
+  - `POST /rooms/:code/restart`: expects `{ participantId }`. Checks if the participant is the host. Calls `restartGame()`.
+
+#### 2. Frontend Changes
+- **API Client**: Add `endRound` and `restartGame` API calls.
+- **State Store**: Add `endRound` and `restartGame` actions.
+- **GamePage View**:
+  - Add "End Round" button visible only to the host during active play.
+  - When room status is `"result"`:
+    - Display round result card in place of drawing canvas showing the revealed secret word.
+    - Hide/disable the guess submission form.
+    - If the user is the host, show a "Restart Game" button.
+  - Modify redirect logic: only navigate back to `/lobby` if the room status transitions to `"lobby"`.
+

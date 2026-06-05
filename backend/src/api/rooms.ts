@@ -1,14 +1,16 @@
 import { Router } from "express";
 import {
   createRoomSchema,
+  endRoundSchema,
   guessSchema,
   HttpError,
   joinRoomSchema,
+  restartGameSchema,
   roomCodeParamsSchema,
   roomViewerQuerySchema,
   startGameSchema
 } from "./schemas.js";
-import { createRoom, getRoom, joinRoom, startGame, submitGuess, toRoomSnapshot } from "../services/roomStore.js";
+import { createRoom, getRoom, joinRoom, startGame, submitGuess, toRoomSnapshot, endRound, restartGame } from "../services/roomStore.js";
 
 export function createRoomsRouter() {
   const router = Router();
@@ -101,6 +103,62 @@ export function createRoomsRouter() {
       } else {
         next(error);
       }
+    }
+  });
+
+  router.post("/:code/end", (request, response, next) => {
+    try {
+      const { code } = roomCodeParamsSchema.parse(request.params);
+      const { participantId } = endRoundSchema.parse(request.body);
+      const room = getRoom(code.toUpperCase());
+
+      if (!room) {
+        throw new HttpError(404, "Unable to find room");
+      }
+
+      if (room.hostId !== participantId) {
+        throw new HttpError(403, "Only the host can end the round");
+      }
+
+      const updatedRoom = endRound(code.toUpperCase());
+
+      if (!updatedRoom) {
+        throw new HttpError(404, "Unable to end round");
+      }
+
+      response.json({
+        room: toRoomSnapshot(updatedRoom, participantId)
+      });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.post("/:code/restart", (request, response, next) => {
+    try {
+      const { code } = roomCodeParamsSchema.parse(request.params);
+      const { participantId } = restartGameSchema.parse(request.body);
+      const room = getRoom(code.toUpperCase());
+
+      if (!room) {
+        throw new HttpError(404, "Unable to find room");
+      }
+
+      if (room.hostId !== participantId) {
+        throw new HttpError(403, "Only the host can restart the game");
+      }
+
+      const updatedRoom = restartGame(code.toUpperCase());
+
+      if (!updatedRoom) {
+        throw new HttpError(404, "Unable to restart game");
+      }
+
+      response.json({
+        room: toRoomSnapshot(updatedRoom, participantId)
+      });
+    } catch (error) {
+      next(error);
     }
   });
 

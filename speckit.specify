@@ -226,3 +226,64 @@ A round is active: a drawer and one or more guessers are on the Game Page. The d
 - Host transfer, kick, or rematch
 - Any database or authentication
 
+---
+
+## Scenario 4 — Result, Restart & Final Validation
+
+### Context
+
+A round ends when either the host chooses to end the round or players finish guessing. The room enters the `result` state, revealing the secret word to all players, presenting the final scoreboard, and freezing guessing activity. The host can then restart the game, returning everyone back to the lobby with clean states but preserving current participants.
+
+---
+
+### Acceptance Criteria
+
+#### AC-27: Room Status "result"
+- **Given** a round is active,
+  **When** the round ends,
+  **Then** the room status transitions to `"result"`.
+
+#### AC-28: End Round Action (Host-Only)
+- **Given** a player is on the Game Page and is the host,
+  **When** they click the "End Round" button,
+  **Then** a `POST /rooms/:code/end` is sent, and the room status becomes `"result"`.
+- If a non-host attempts to end the round directly, the backend returns a `403 Forbidden` response.
+
+#### AC-29: Secret Word Reveal
+- **Given** the room status is `"result"`,
+  **When** any player gets the room state,
+  **Then** the `secretWord` is exposed to all participants in the `RoomSnapshot`.
+
+#### AC-30: Results Screen UI View
+- **Given** the room status is `"result"`,
+  **When** the Game Page renders,
+  **Then**:
+  - The guess submission form is completely hidden or disabled for all players.
+  - The canvas area displays the round results and reveals the correct secret word.
+  - The final scores remain visible on the scoreboard, and the full guess history remains visible.
+
+#### AC-31: Restart Game Action (Host-Only)
+- **Given** the room status is `"result"`,
+  **When** the host clicks the "Restart Game" button,
+  **Then** a `POST /rooms/:code/restart` is sent:
+  - The room status changes back to `"lobby"`.
+  - All round state (scores, guesses, drawerId, secretWord) is completely cleared.
+  - All participants currently in the room are preserved.
+- If a non-host attempts to restart the game, the backend returns `403 Forbidden`.
+
+#### AC-32: Auto-Redirect on Restart
+- **Given** the room is restarted by the host,
+  **When** other players poll the room state,
+  **Then** they are automatically redirected back to the Lobby page (`/lobby`).
+
+---
+
+### Edge Cases
+
+| Edge Case | Expected Behavior |
+|-----------|-------------------|
+| Guesser tries to submit a guess after the round ended | Backend returns 409 (Game is not active) or 400 |
+| Non-host attempts to end or restart game via API | Backend returns 403 Forbidden |
+| Participant list updates during result screen | Preserve all participants; anyone present when restart is triggered will return to the lobby |
+
+
