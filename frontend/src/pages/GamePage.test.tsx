@@ -1,6 +1,7 @@
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { RoomSnapshot } from "../services/api";
 
 vi.mock("react-router-dom", () => ({
   useNavigate: () => vi.fn(),
@@ -42,10 +43,10 @@ let mockRoomStateValue: {
   isLoading: false,
 };
 
-function makePlayingRoom(extraParticipants: { id: string; name: string }[] = []) {
+function makePlayingRoom(extraParticipants: { id: string; name: string }[] = []): RoomSnapshot {
   return {
     code: "ABCD",
-    status: "playing" as const,
+    status: "playing",
     hostId: "host-id",
     drawerId: "host-id",
     secretWord: "rocket",
@@ -56,8 +57,8 @@ function makePlayingRoom(extraParticipants: { id: string; name: string }[] = [])
     scores: {
       "host-id": 0,
       ...extraParticipants.reduce((acc, p) => ({ ...acc, [p.id]: 0 }), {}),
-    },
-    guesses: [],
+    } as Record<string, number>,
+    guesses: [] as any[],
     availableWords: [],
     roles: [],
   };
